@@ -11,9 +11,10 @@ import {
     IconButton,
     Grid,
     Alert,
+    TextField,
     styled
 } from '@mui/material';
-import { Close, AddShoppingCart, Add, Remove } from '@mui/icons-material';
+import { Close, AddShoppingCart, Add, Remove, CalendarToday } from '@mui/icons-material';
 import { useEquipment } from "../context/EquipmentContext";
 
 const DoradoButton = styled(Button)(({ theme }) => ({
@@ -69,21 +70,48 @@ const SummaryBox = styled(Box)(({ theme }) => ({
     border: `2px solid #D4AF37`,
 }));
 
+const CalendarContainer = styled(Box)(({ theme }) => ({
+    border: '2px solid #e0e0e0',
+    borderRadius: '12px',
+    padding: theme.spacing(2),
+    backgroundColor: '#fafafa',
+}));
+
+// Función simple para formatear fechas
+const formatDate = (date) => {
+    if (!date) return '--';
+    return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
+
+// Función para agregar días a una fecha
+const addDays = (date, days) => {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+};
+
 export default function EquipmentDetails({ open, onClose, equipment }) {
-    const { actions, state } = useEquipment();
+    const { actions } = useEquipment();
     const [addedToCart, setAddedToCart] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [startDate, setStartDate] = useState(null);
 
-    // Reset quantity cuando se abre un equipo diferente
+    // Reset cuando se abre un equipo diferente
     useEffect(() => {
         setQuantity(1);
         setAddedToCart(false);
+        setStartDate(new Date()); // Fecha actual por defecto
     }, [equipment]);
 
     if (!equipment) return null;
 
     const handleAddToCart = () => {
-        console.log('Añadiendo al carrito:', equipment.id, quantity);
+        console.log('Añadiendo al carrito:', equipment.id, quantity, startDate);
         actions.addToCart(equipment.id, quantity);
         setAddedToCart(true);
         setTimeout(() => {
@@ -112,6 +140,17 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
     const maxQuantityReached = quantity >= equipment.quantity;
     const rentalDays = getRentalDays();
 
+    // Calcular fecha de retorno
+    const returnDate = startDate ? addDays(startDate, rentalDays) : null;
+
+    // Manejar cambio de fecha manual (input simple)
+    const handleDateChange = (event) => {
+        const newDate = new Date(event.target.value);
+        if (newDate instanceof Date && !isNaN(newDate)) {
+            setStartDate(newDate);
+        }
+    };
+
     return (
         <Dialog
             open={open}
@@ -122,7 +161,7 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                 sx: {
                     borderRadius: 2,
                     overflow: 'hidden',
-                    maxHeight: '90vh' // Limitar altura máxima para que sea scrollable
+                    maxHeight: '90vh'
                 }
             }}
         >
@@ -131,7 +170,6 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                     <Close />
                 </CloseButton>
 
-                {/* DialogContent con scroll */}
                 <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                     <Box sx={{ p: 3, maxHeight: '70vh', overflow: 'auto' }}>
                         <Grid container spacing={4}>
@@ -175,6 +213,37 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                                 <Divider sx={{ my: 3 }} />
 
                                 {/* Información de disponibilidad */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                                        📦 Disponibilidad
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                        <Typography
+                                            variant="h5"
+                                            fontWeight="bold"
+                                            color={equipment.quantity > 0 ? 'success.main' : 'error.main'}
+                                        >
+                                            {equipment.quantity > 0 ? `${equipment.quantity} disponibles` : 'Agotado'}
+                                        </Typography>
+                                        <Chip
+                                            label={rentalDays === 1 ? "1 día" : "7 días"}
+                                            color={rentalDays === 1 ? "warning" : "success"}
+                                            variant="outlined"
+                                            sx={{ fontWeight: 'bold' }}
+                                        />
+                                    </Box>
+
+                                    {equipment.quantity === 1 && (
+                                        <Alert severity="warning" sx={{ mb: 2 }}>
+                                            <Typography variant="body2" fontWeight="bold">
+                                                ⚠️ Última unidad disponible - Préstamo por 1 día solamente
+                                            </Typography>
+                                        </Alert>
+                                    )}
+                                </Box>
+
+                                <Divider sx={{ my: 3 }} />
+
                                 {/* Selector de cantidad */}
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -233,6 +302,62 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
 
                                 <Divider sx={{ my: 3 }} />
 
+                                {/* Selector de fecha simple */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                                        📅 Fecha de Inicio de Reserva
+                                    </Typography>
+                                    <CalendarContainer>
+                                        <TextField
+                                            label="Fecha de inicio"
+                                            type="date"
+                                            value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                                            onChange={handleDateChange}
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                            fullWidth
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <CalendarToday sx={{ color: '#D4AF37', mr: 1 }} />
+                                                ),
+                                            }}
+                                        />
+                                        
+                                        {startDate && (
+                                            <Box sx={{ mt: 2, p: 2, backgroundColor: 'white', borderRadius: 1 }}>
+                                                <Typography variant="body2" fontWeight="bold" color="#8B0000">
+                                                    📅 Fechas de tu reserva:
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                                                    <Typography variant="body2">
+                                                        Inicio:
+                                                    </Typography>
+                                                    <Typography variant="body2" fontWeight="bold">
+                                                        {formatDate(startDate)}
+                                                    </Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                                    <Typography variant="body2">
+                                                        Retorno:
+                                                    </Typography>
+                                                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                                                        {returnDate ? formatDate(returnDate) : '--'}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        )}
+
+                                        <Alert severity="info" sx={{ mt: 2 }}>
+                                            <Typography variant="body2">
+                                                📌 <strong>Nota:</strong> El equipo debe ser recogido en la fecha de inicio seleccionada
+                                            </Typography>
+                                        </Alert>
+                                    </CalendarContainer>
+                                </Box>
+
+                                <Divider sx={{ my: 3 }} />
+
                                 {/* Resumen de la reserva */}
                                 <SummaryBox sx={{ mb: 3 }}>
                                     <Typography variant="h6" fontWeight="bold" gutterBottom color="#8B0000">
@@ -250,6 +375,22 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                                             {rentalDays} día{rentalDays !== 1 ? 's' : ''}
                                         </Typography>
                                     </Box>
+                                    {startDate && (
+                                        <>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                                                <Typography variant="body2" fontWeight="medium">Fecha de inicio:</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="#8B0000">
+                                                    {startDate.toLocaleDateString('es-ES')}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                                                <Typography variant="body2" fontWeight="medium">Fecha de retorno:</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="success.main">
+                                                    {returnDate ? returnDate.toLocaleDateString('es-ES') : '--'}
+                                                </Typography>
+                                            </Box>
+                                        </>
+                                    )}
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
                                         <Typography variant="body2" fontWeight="medium">Disponibilidad después:</Typography>
                                         <Typography variant="body2" fontWeight="bold" color={equipment.quantity - quantity > 0 ? 'success.main' : 'warning.main'}>
@@ -260,8 +401,8 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <Typography variant="body2" fontWeight="medium">Estado:</Typography>
                                         <Chip
-                                            label="Listo para reservar"
-                                            color="primary"
+                                            label={startDate ? "Listo para reservar" : "Selecciona fecha"}
+                                            color={startDate ? "primary" : "default"}
                                             size="small"
                                             variant="outlined"
                                         />
@@ -282,6 +423,9 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                                             • ⏰ Última unidad disponible: <strong>1 día</strong> de préstamo
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                                            • 📆 Los días de préstamo se calculan a partir de la fecha de inicio seleccionada
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary">
                                             • 🆔 Presentar credencial al recoger el equipo
@@ -306,7 +450,7 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                             size="large"
                             startIcon={<AddShoppingCart />}
                             onClick={handleAddToCart}
-                            disabled={equipment.quantity === 0 || addedToCart}
+                            disabled={equipment.quantity === 0 || addedToCart || !startDate}
                             sx={{
                                 py: 1.5,
                                 fontSize: '1.1rem'
@@ -314,6 +458,14 @@ export default function EquipmentDetails({ open, onClose, equipment }) {
                         >
                             {addedToCart ? '✓ Añadido al Carrito' : `Añadir ${quantity} al Carrito`}
                         </DoradoButton>
+
+                        {!startDate && (
+                            <Alert severity="warning" sx={{ mt: 2 }}>
+                                <Typography variant="body2">
+                                    ⚠️ Por favor selecciona una fecha de inicio para la reserva
+                                </Typography>
+                            </Alert>
+                        )}
 
                         {addedToCart && (
                             <Alert severity="success" sx={{ mt: 2 }}>

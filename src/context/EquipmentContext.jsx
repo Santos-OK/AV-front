@@ -69,18 +69,21 @@ const ACTIONS = {
 const equipmentReducer = (state, action) => {
   switch (action.type) {
     case ACTIONS.ADD_TO_CART:
-      const equipmentItem = state.equipment.find(item => item.id === action.payload);
+      const { id, quantity = 1 } = action.payload;
+      const equipmentItem = state.equipment.find(item => item.id === id);
 
-      if (equipmentItem && equipmentItem.quantity > 0) {
-        const existingCartItem = state.cart.find(item => item.id === action.payload);
+      console.log('Añadiendo al carrito:', { id, quantity, equipmentItem });
 
-        // Determinar días automáticamente
+      if (equipmentItem && equipmentItem.quantity >= quantity) {
+        const existingCartItem = state.cart.find(item => item.id === id);
+
+        // Determinar días automáticamente - basado en la cantidad disponible ANTES de restar
         const rentalDays = equipmentItem.quantity === 1 ? 1 : 7;
 
         // Actualizar equipment (reducir cantidad)
         const updatedEquipment = state.equipment.map(item =>
-          item.id === action.payload
-            ? { ...item, quantity: item.quantity - 1 }
+          item.id === id
+            ? { ...item, quantity: item.quantity - quantity }
             : item
         );
 
@@ -88,11 +91,10 @@ const equipmentReducer = (state, action) => {
         let updatedCart;
         if (existingCartItem) {
           updatedCart = state.cart.map(item =>
-            item.id === action.payload
+            item.id === id
               ? {
                 ...item,
-                quantity: item.quantity + 1,
-                // Si ya existe, mantener los días originales o actualizar si es necesario
+                quantity: item.quantity + quantity,
                 rentalDays: Math.max(item.rentalDays, rentalDays)
               }
               : item
@@ -100,10 +102,14 @@ const equipmentReducer = (state, action) => {
         } else {
           updatedCart = [...state.cart, {
             ...equipmentItem,
-            quantity: 1,
-            rentalDays: rentalDays // Días automáticos
+            quantity: quantity,
+            rentalDays: rentalDays,
+            // Asegurarnos de que la cantidad en el carrito refleje lo añadido
+            originalQuantity: equipmentItem.quantity
           }];
         }
+
+        console.log('Carrito actualizado:', updatedCart);
 
         return {
           ...state,
@@ -219,9 +225,9 @@ export const EquipmentProvider = ({ children }) => {
   const [state, dispatch] = useReducer(equipmentReducer, initialState);
 
   const actions = {
-    addToCart: (id) => dispatch({
+    addToCart: (id, quantity = 1) => dispatch({
       type: ACTIONS.ADD_TO_CART,
-      payload: id
+      payload: { id, quantity }
     }),
     removeFromCart: (id) => dispatch({
       type: ACTIONS.REMOVE_FROM_CART,

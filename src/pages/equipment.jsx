@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Box,
     Grid,
@@ -6,39 +6,44 @@ import {
     CardContent,
     CardMedia,
     Typography,
-    Button,
     Chip,
-    Alert,
     styled
 } from '@mui/material';
-import { AddShoppingCart } from '@mui/icons-material';
 import { useEquipment } from "../context/EquipmentContext";
-
-const DoradoButton = styled(Button)(({ theme }) => ({
-    backgroundColor: '#D4AF37',
-    color: '#FFF',
-    fontWeight: 'bold',
-    '&:hover': {
-        backgroundColor: '#B8860B',
-    },
-}));
+import EquipmentDetails from './EquipmentDetails';
 
 const EquipmentCard = styled(Card)(({ theme }) => ({
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
+    cursor: 'pointer',
     transition: 'all 0.3s ease',
     '&:hover': {
-        transform: 'translateY(-4px)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        transform: 'translateY(-8px)',
+        boxShadow: '0 12px 28px rgba(0,0,0,0.15)',
     },
 }));
 
-export default function Equipment() {
-    const { state, actions } = useEquipment();
+const AvailabilityChip = styled(Chip)(({ theme, available }) => ({
+    backgroundColor: available ? '#4CAF50' : '#f44336',
+    color: 'white',
+    fontWeight: 'bold',
+}));
 
-    const handleAddToCart = (equipment) => {
-        actions.addToCart(equipment.id);
+export default function Equipment() {
+    const { state } = useEquipment();
+    const [selectedEquipment, setSelectedEquipment] = useState(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+
+    const handleCardClick = (equipment) => {
+        console.log('Card clickeada:', equipment);
+        setSelectedEquipment(equipment);
+        setDetailsOpen(true);
+    };
+
+    const handleCloseDetails = () => {
+        setDetailsOpen(false);
+        setSelectedEquipment(null);
     };
 
     return (
@@ -47,79 +52,80 @@ export default function Equipment() {
                 Equipo Disponible
             </Typography>
 
-            {/* Alert informativo sobre la política de días */}
-            <Alert severity="info" sx={{ mb: 3 }}>
-                <Typography variant="body1" fontWeight="bold">
-                    📋 Política de Préstamo
-                </Typography>
-                <Typography variant="body2">
-                    • Equipo con múltiples unidades: <strong>7 días</strong> de préstamo<br />
-                    • Última unidad disponible: <strong>1 día</strong> de préstamo
-                </Typography>
-            </Alert>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
+                Haz clic en cualquier equipo para ver detalles y reservar
+            </Typography>
 
             <Grid container spacing={3}>
                 {state.equipment.map((item) => (
-                    <Grid item xs={12} sm={6} md={4} key={item.id}>
-                        <EquipmentCard>
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
+                        <EquipmentCard onClick={() => handleCardClick(item)}>
                             <CardMedia
                                 component="img"
                                 height="200"
                                 image={item.image}
                                 alt={item.name}
-                                sx={{ objectFit: 'cover' }}
+                                sx={{
+                                    objectFit: 'cover',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                        filter: 'brightness(1.1)',
+                                    }
+                                }}
                             />
-                            <CardContent sx={{ flexGrow: 1 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    {item.name}
-                                </Typography>
+                            <CardContent sx={{ flexGrow: 1, p: 2 }}>
                                 <Chip
                                     label={item.category}
                                     size="small"
                                     sx={{
                                         backgroundColor: '#D4AF37',
                                         color: 'white',
-                                        mb: 1
+                                        mb: 1,
+                                        fontSize: '0.75rem'
                                     }}
                                 />
-                                <Typography variant="body2" color="textSecondary" paragraph>
-                                    {item.description}
+                                <Typography
+                                    variant="h6"
+                                    gutterBottom
+                                    sx={{
+                                        fontSize: '1rem',
+                                        fontWeight: 'bold',
+                                        lineHeight: 1.2,
+                                        height: '2.4em',
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical'
+                                    }}
+                                >
+                                    {item.name}
                                 </Typography>
-
-                                {/* Información de días de préstamo */}
-                                <Box sx={{ mb: 2, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                                    <Typography variant="body2" fontWeight="bold">
-                                        {item.quantity === 1 ? (
-                                            <>⏳ <span style={{ color: '#f57c00' }}>Última unidad - Préstamo por 1 día</span></>
-                                        ) : (
-                                            <>📅 <span style={{ color: '#2e7d32' }}>Préstamo por 7 días</span></>
-                                        )}
-                                    </Typography>
-                                </Box>
-
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography
-                                        variant="body1"
-                                        fontWeight="bold"
-                                        color={item.quantity > 0 ? 'success.main' : 'error.main'}
-                                    >
-                                        {item.quantity > 0 ? `${item.quantity} disponibles` : 'Agotado'}
-                                    </Typography>
-                                    <DoradoButton
-                                        variant="contained"
-                                        startIcon={<AddShoppingCart />}
-                                        onClick={() => handleAddToCart(item)}
-                                        disabled={item.quantity === 0}
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
+                                    <AvailabilityChip
+                                        available={item.quantity > 0}
+                                        label={item.quantity > 0 ? `${item.quantity} disponible${item.quantity !== 1 ? 's' : ''}` : 'Agotado'}
                                         size="small"
+                                    />
+                                    <Typography
+                                        variant="body2"
+                                        color="textSecondary"
+                                        sx={{ fontSize: '0.75rem' }}
                                     >
-                                        Reservar
-                                    </DoradoButton>
+                                        {item.quantity === 1 ? '1 día' : '7 días'}
+                                    </Typography>
                                 </Box>
                             </CardContent>
                         </EquipmentCard>
                     </Grid>
                 ))}
             </Grid>
+
+            {/* Dialog de detalles */}
+            <EquipmentDetails
+                open={detailsOpen}
+                onClose={handleCloseDetails}
+                equipment={selectedEquipment}
+            />
         </Box>
     );
 }
